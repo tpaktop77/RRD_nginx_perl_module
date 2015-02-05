@@ -1,0 +1,112 @@
+package hello;
+
+use nginx;
+use strict;
+use warnings;
+use HTML::Tiny;
+
+
+sub handler {
+
+##### Constants
+    use constant uriZpoolStatus => 'zpoolstatus';
+    use constant uriPS => 'ps';
+    use constant uriSD => 'sd';
+
+
+##### Varialbes
+    my $r = shift;
+    my $URI = $r->uri;                              # Get URI
+    my $DIR = "/test/";                             # path to perl module, should be removed in Cleaned URI
+    my $result = "";                                # Output
+    my $CURI = substr($URI, length($DIR));
+
+
+#### Starting HTTP output by content header
+    $r->send_http_header("text/html");
+    return OK if $r->header_only;
+
+    $r->flush;
+
+##### what is in Cleaned URI???
+    if ($CURI eq uriZpoolStatus)                    # URI must be strongly equal to constant
+    {
+        $result = `sudo zpool status`;              # Execute following command.
+    }
+    elsif ($CURI eq uriPS)                          # URI must be strongly equal to constant
+    {
+        $result = `sudo ps -aux`;                   # Execute following command.
+    }
+    elsif (index($URI, $DIR.'sd') != -1)            # URI must contains constant
+    {
+        my $drive = substr($URI, length($DIR));     # Get drive name
+
+        if (length($drive) >2 &length($drive) <5 )  # Drive name must be 3-4 characters long
+       {
+#	    my $callstring = ''
+            $result = `sudo smartctl -ax /dev/$drive`;
+        }
+    }
+
+
+    my $h = HTML::Tiny->new;
+
+
+        $h = $h->html(
+            [
+              $h->head(
+                [
+                $h->title( 'Sample page' ),
+                $h->meta(       { 'http-equiv'=>'Content-Language', 'content'=>'en-us' }        ),
+                $h->meta(       { 'http-equiv'=>'imagetoolbar', 'content'=>'no' }               ),
+                $h->meta(       { 'http-equiv'=>'refresh', 'content'=>'100' }           ),
+                $h->link(       {
+                                    'href'=>"http://cts.tpaktop.com/stylesheets/base.css",
+                                    media=>"screen",
+                                    rel=>"stylesheet",
+                                    type=>"text/css"
+                                }       ),
+                $h->link(       {
+                                    'href'=>"http://cts.tpaktop.com/stylesheets/mainpage.css",
+                                    media=>"screen",
+                                    rel=>"stylesheet",
+                                    type=>"text/css"
+                                }       ),
+                $h->link(       {
+                                    'href'=>"/stylesheets/local.css",
+                                    media=>"screen",
+                                    rel=>"stylesheet",
+                                    type=>"text/css"
+                                }       )
+                ]
+              ),
+              $h->body(
+                [
+#                  $h->pre( `date`."<br>".$result, { class => 'detail' } )
+                  $h->pre( $result, { class => 'detail' } )
+                ]
+              )
+            ]
+          );
+
+        $r->print($h);
+
+
+
+
+##### Output HTTP
+
+    if (-f $r->filename or -d _) {
+        $r->print($r->uri, " exists!\n");
+    }
+
+    return OK;
+}
+
+sub PrepareHTMLPage()
+{
+    return OK;
+}
+
+1;
+__END__
